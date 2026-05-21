@@ -782,7 +782,7 @@ function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').repl
 // Requires a local server: cd to this file's folder, run:
 //   python -m http.server 8000
 // then open http://localhost:8000/soundbite.html
-import { KokoroTTS } from 'https://esm.sh/kokoro-js@1.2.1';
+import { KokoroTTS } from 'https://esm.sh/kokoro-js';
 
 let tts = null;
 let selectedCfg = null;
@@ -863,7 +863,7 @@ async function loadModel() {
   ];
   const timers = steps.map(([d,p,m]) => setTimeout(() => { setProgress(p); setStatus(m); }, d));
   try {
-    tts = await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0_timestep_piecewise-v1', { dtype: 'q8' });
+    tts = await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-ONNX', { dtype: 'q8' });
     timers.forEach(clearTimeout);
     setProgress(100);
     setStatus('✓ model ready · running entirely in your browser');
