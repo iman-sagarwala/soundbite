@@ -357,7 +357,7 @@ footer { position:relative; z-index:1; text-align:center; padding:3rem 1.5rem; b
   <div class="tts-inner">
     <div class="impact-tag">try it now</div>
     <h2 class="impact-headline" style="margin-bottom:0.75rem">hear it <em>right now.</em></h2>
-    <p style="font-size:14px;color:var(--text2);margin-bottom:2rem;line-height:1.7">Pick a voice, type anything, and listen. Runs entirely in your browser — no server, no uploads.</p>
+    <p style="font-size:14px;color:var(--text2);margin-bottom:2rem;line-height:1.7">Drop a doc, image, or PDF — or just type. Pick a voice and hit play. Everything runs in your browser.</p>
 
     <!-- MODEL STATUS -->
     <div id="tts-status" style="font-size:12px;color:var(--text3);margin-bottom:1.25rem;min-height:18px;">click play to load voice model (~80mb, cached after first use)</div>
@@ -368,12 +368,24 @@ footer { position:relative; z-index:1; text-align:center; padding:3rem 1.5rem; b
     <!-- VOICE SELECTOR -->
     <div id="voice-selector" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:1.5rem;"></div>
 
-    <!-- TEXT INPUT -->
-    <textarea id="tts-input" style="width:100%;font-family:'DM Sans',sans-serif;font-size:14px;background:var(--bg1);border:1px solid var(--border2);border-radius:10px;padding:12px 14px;color:var(--text);resize:vertical;min-height:100px;line-height:1.7;margin-bottom:12px;" placeholder="type or paste anything here…">Reading shouldn't be a barrier. Soundbite lets you hear any document in a voice that actually feels familiar.</textarea>
+    <!-- DOC UPLOAD ZONE -->
+    <div id="doc-drop" style="border:1px dashed rgba(255,255,255,0.13);border-radius:12px;padding:1.5rem;text-align:center;cursor:pointer;background:rgba(255,255,255,0.01);transition:all 0.18s;margin-bottom:12px;">
+      <input type="file" id="doc-input" accept=".pdf,.docx,.doc,.txt,.png,.jpg,.jpeg,.webp,.bmp" style="display:none">
+      <div id="doc-drop-icon" style="font-size:24px;margin-bottom:6px;color:rgba(255,255,255,0.2)">↑</div>
+      <div style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.5);margin-bottom:3px">drop a file or click to upload</div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.2)">pdf · docx · txt · jpg · png — text extracted automatically</div>
+    </div>
 
-    <!-- PLAY BUTTON -->
-    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+    <!-- EXTRACT STATUS -->
+    <div id="extract-status" style="font-size:11px;color:rgba(255,255,255,0.3);margin-bottom:10px;min-height:16px;display:flex;align-items:center;gap:6px;"></div>
+
+    <!-- TEXT INPUT -->
+    <textarea id="tts-input" style="width:100%;font-family:'DM Sans',sans-serif;font-size:14px;background:var(--bg1);border:1px solid var(--border2);border-radius:10px;padding:12px 14px;color:var(--text);resize:vertical;min-height:100px;line-height:1.7;margin-bottom:12px;" placeholder="extracted text appears here — or type anything…">Reading shouldn't be a barrier. Soundbite lets you hear any document in a voice that actually feels familiar.</textarea>
+
+    <!-- PLAY + CLEAR -->
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
       <button id="tts-play-btn" style="font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;padding:11px 28px;border-radius:8px;border:none;background:#fff;color:#000;cursor:pointer;transition:opacity 0.15s;">▶ play</button>
+      <button id="tts-clear-btn" onclick="document.getElementById('tts-input').value='';document.getElementById('extract-status').textContent=''" style="font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;padding:10px 18px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:rgba(255,255,255,0.4);cursor:pointer;transition:all 0.15s;">clear</button>
     </div>
 
     <!-- PLAYBACK WAVEFORM -->
@@ -863,7 +875,7 @@ async function loadModel() {
   ];
   const timers = steps.map(([d,p,m]) => setTimeout(() => { setProgress(p); setStatus(m); }, d));
   try {
-    tts = await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-ONNX', { dtype: 'q8' });
+    tts = await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', { dtype: 'q8', device: 'wasm' });
     timers.forEach(clearTimeout);
     setProgress(100);
     setStatus('✓ model ready · running entirely in your browser');
@@ -926,6 +938,114 @@ function float32ToWav(samples, rate) {
     v.setInt16(o,x<0?x*0x8000:x*0x7FFF,true);
   }
   return new Blob([buf],{type:'audio/wav'});
+}
+</script>
+<!-- PDF.js, Mammoth, Tesseract for doc extraction -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script>
+// ── DOCUMENT EXTRACTION ────────────────────────────────────
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+const drop     = document.getElementById('doc-drop');
+const docInput = document.getElementById('doc-input');
+const exSt     = document.getElementById('extract-status');
+const textarea = document.getElementById('tts-input');
+
+// drag and drop
+drop.addEventListener('click', () => docInput.click());
+drop.addEventListener('dragover', e => { e.preventDefault(); drop.style.borderColor = 'rgba(255,255,255,0.35)'; drop.style.background = 'rgba(255,255,255,0.03)'; });
+drop.addEventListener('dragleave', () => { drop.style.borderColor = 'rgba(255,255,255,0.13)'; drop.style.background = 'rgba(255,255,255,0.01)'; });
+drop.addEventListener('drop', e => {
+  e.preventDefault();
+  drop.style.borderColor = 'rgba(255,255,255,0.13)';
+  drop.style.background = 'rgba(255,255,255,0.01)';
+  const file = e.dataTransfer.files[0];
+  if (file) extractFile(file);
+});
+docInput.addEventListener('change', e => { if (e.target.files[0]) extractFile(e.target.files[0]); docInput.value = ''; });
+
+function setExtractStatus(msg, color) {
+  exSt.style.color = color || 'rgba(255,255,255,0.3)';
+  exSt.textContent = msg;
+}
+
+async function extractFile(file) {
+  const name = file.name.toLowerCase();
+  setExtractStatus('reading ' + file.name + '…');
+  drop.style.borderColor = 'rgba(77,150,255,0.4)';
+
+  try {
+    let text = '';
+
+    if (name.endsWith('.txt')) {
+      text = await file.text();
+
+    } else if (name.endsWith('.pdf')) {
+      text = await extractPDF(file);
+
+    } else if (name.endsWith('.docx') || name.endsWith('.doc')) {
+      text = await extractDocx(file);
+
+    } else if (/\.(png|jpg|jpeg|webp|bmp)$/.test(name)) {
+      text = await extractImage(file);
+
+    } else {
+      setExtractStatus('unsupported file type', 'rgba(255,100,100,0.7)');
+      drop.style.borderColor = 'rgba(255,255,255,0.13)';
+      return;
+    }
+
+    text = text.trim();
+    if (!text) { setExtractStatus('no text found in file', 'rgba(255,180,80,0.7)'); return; }
+    textarea.value = text;
+    setExtractStatus('✓ extracted ' + text.length.toLocaleString() + ' characters from ' + file.name, 'rgba(107,203,119,0.9)');
+  } catch(e) {
+    setExtractStatus('✗ extraction failed — ' + e.message, 'rgba(255,100,100,0.7)');
+    console.error(e);
+  }
+  drop.style.borderColor = 'rgba(255,255,255,0.13)';
+}
+
+// ── PDF ────────────────────────────────────────────────────
+async function extractPDF(file) {
+  setExtractStatus('extracting PDF text…');
+  const arrayBuf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuf }).promise;
+  let fullText = '';
+  for (let i = 1; i <= pdf.numPages; i++) {
+    setExtractStatus(`reading page ${i} of ${pdf.numPages}…`);
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    const pageText = content.items.map(item => item.str).join(' ');
+    fullText += pageText + '\n';
+  }
+  return fullText;
+}
+
+// ── DOCX ───────────────────────────────────────────────────
+async function extractDocx(file) {
+  setExtractStatus('extracting Word doc text…');
+  const arrayBuf = await file.arrayBuffer();
+  const result = await mammoth.extractRawText({ arrayBuffer: arrayBuf });
+  return result.value;
+}
+
+// ── IMAGE OCR ─────────────────────────────────────────────
+async function extractImage(file) {
+  setExtractStatus('running OCR on image — this takes a moment…');
+  const url = URL.createObjectURL(file);
+  const result = await Tesseract.recognize(url, 'eng', {
+    logger: m => {
+      if (m.status === 'recognizing text') {
+        setExtractStatus(`OCR: ${Math.round(m.progress * 100)}% complete…`);
+      }
+    }
+  });
+  URL.revokeObjectURL(url);
+  return result.data.text;
 }
 </script>
 </body>
