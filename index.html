@@ -940,10 +940,9 @@ function float32ToWav(samples, rate) {
   return new Blob([buf],{type:'audio/wav'});
 }
 </script>
-<!-- PDF.js, Mammoth, Tesseract for doc extraction -->
+<!-- PDF.js and Mammoth only — Tesseract loads lazily when image is dropped -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script>
 // ── DOCUMENT EXTRACTION ────────────────────────────────────
 pdfjsLib.GlobalWorkerOptions.workerSrc =
@@ -1035,6 +1034,16 @@ async function extractDocx(file) {
 
 // ── IMAGE OCR ─────────────────────────────────────────────
 async function extractImage(file) {
+  setExtractStatus('loading OCR engine…');
+  // lazy load Tesseract only when actually needed
+  if (!window.Tesseract) {
+    await new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+      s.onload = res; s.onerror = rej;
+      document.head.appendChild(s);
+    });
+  }
   setExtractStatus('running OCR on image — this takes a moment…');
   const url = URL.createObjectURL(file);
   const result = await Tesseract.recognize(url, 'eng', {
