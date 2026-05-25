@@ -242,6 +242,10 @@ select.fi option { background:#161616; }
 .tags-wrap { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:13px; }
 .tag { font-size:11px; font-weight:500; padding:4px 11px; border-radius:20px; border:1px solid var(--border); background:transparent; color:var(--text2); cursor:pointer; transition:all 0.13s; user-select:none; }
 .tag:hover,.tag.on { border-color:var(--border2); color:var(--text); background:var(--bg3); }
+<label style="display:flex;gap:9px;align-items:flex-start;font-size:12px;color:var(--text2);line-height:1.5;margin-bottom:13px;cursor:pointer">
+  <input type="checkbox" id="consent-box" style="margin-top:2px;flex-shrink:0">
+  <span>I confirm I own this voice or have the speaker's explicit permission. I will not clone public figures or anyone who has not consented.</span>
+</label>
 .form-foot { display:flex; align-items:center; justify-content:space-between; padding-top:13px; border-top:1px solid var(--border); }
 .hint { font-size:11px; color:var(--text3); }
 .btn-cancel { font-family:'DM Sans',sans-serif; font-size:13px; font-weight:500; padding:9px 18px; border-radius:8px; border:1px solid var(--border2); background:transparent; color:var(--text2); cursor:pointer; }
@@ -654,20 +658,54 @@ function addToVoice(vid,files){
 }
 
 // ── CREATE VOICE ───────────────────────────────────────────
-function createVoice(){
-  const name=document.getElementById('voice-name').value.trim();
-  if(!name){showToast('give the voice a name');return;}
-  const source=document.getElementById('personality-source').value;
-  const prompt=document.getElementById('personality-prompt').value.trim();
-  const tags=Array.from(document.querySelectorAll('#tags-wrap .tag.on')).map(t=>t.textContent);
-  const initials=name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
-  const recs=[...state.stagingFiles];
-  const v={id:'v'+Date.now(),name,source,prompt,tags,initials,recordings:recs,meta:`${recs.length} recording${recs.length!==1?'s':''} · ${source}`,active:state.voices.length===0,expanded:false};
+async function createVoice(){
+  const name = document.getElementById('voice-name').value.trim();
+  if(!name){ showToast('give the voice a name'); return; }
+
+  // CONSENT GATE — refuse to clone without the ticked box.
+  const consent = document.getElementById('consent-box');
+  if(!consent || !consent.checked){
+    showToast('tick the consent box first'); return;
+  }
+
+  if(!state.stagingFiles.length){
+    showToast('add at least one recording'); return;
+  }
+
+  const source = document.getElementById('personality-source').value;
+  const prompt = document.getElementById('personality-prompt').value.trim();
+  const tags   = Array.from(document.querySelectorAll('#tags-wrap .tag.on')).map(t=>t.textContent);
+  const initials = name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+
+  showToast('cloning voice — this takes a few seconds…');
+
+  const form = new FormData();
+  form.append('name', name);
+  form.append('consent', 'true');           // backend re-checks this
+  state.stagingFiles.forEach(f => form.append('files', f.file, f.name));
+
+  let voiceId = null;
+  try {
+    const res = await fetch(API_BASE + '/api/clone', { method: 'POST', body: form });
+    if(!res.ok) throw new Error(await res.text());
+    voiceId = (await res.json()).voice_id;
+  } catch(e) {
+    showToast('✗ clone failed'); console.error(e); return;
+  }
+
+  const recs = [...state.stagingFiles];
+  const v = {
+    id:'v'+Date.now(), name, source, prompt, tags, initials,
+    voiceId,
+    recordings:recs,
+    meta:`${recs.length} recording${recs.length!==1?'s':''} · cloned`,
+    active: state.voices.length===0, expanded:false
+  };
   state.voices.push(v);
   recs.forEach(f=>state.lectures.push({id:'l'+Date.now()+Math.random().toString(36).slice(2,4),name:f.name,url:f.url,voiceName:name,icon:randIcon(),time:'just now'}));
-  renderVoices();renderLectures();resetForm();updateStats();showToast(`✓ voice "${name}" created`);
+  renderVoices(); renderLectures(); resetForm(); updateStats();
+  showToast(`✓ voice "${name}" cloned & ready`);
 }
-
 function resetForm(){
   document.getElementById('voice-name').value='';
   document.getElementById('personality-prompt').value='';
