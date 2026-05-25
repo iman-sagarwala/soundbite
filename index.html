@@ -430,7 +430,7 @@ footer { position:relative; z-index:1; text-align:center; padding:3rem 1.5rem; b
 
 <script>
 // ===== CONFIG: paste your Colab tunnel URL here each session =====
-const API_BASE = "  https://healthy-curious-illustrated-finance.trycloudflare.com";
+const API_BASE = "  https://shallot-grafting-backtrack.ngrok-free.dev";
 
 // ===== SECTION DIVIDERS =====
 (function buildDividers(){
@@ -560,7 +560,7 @@ async function createVoice(){
 
   let voiceId = null;
   try {
-    const res = await fetch(API_BASE + '/api/clone', { method: 'POST', body: form });
+    const res = await fetch(API_BASE + '/api/clone', { method: 'POST', body: form, headers: { 'ngrok-skip-browser-warning': '1' } });
     if(!res.ok) throw new Error(await res.text());
     voiceId = (await res.json()).voice_id;
   } catch(e) {
@@ -729,7 +729,7 @@ ttsPlayBtn.addEventListener('click', async () => {
     form.append('text', text);
     form.append('voice_id', voiceId);
 
-    const res = await fetch(API_BASE + '/api/synthesize', { method: 'POST', body: form });
+    const res = await fetch(API_BASE + '/api/synthesize', { method: 'POST', body: form, headers: { 'ngrok-skip-browser-warning': '1' } });
     if (!res.ok) throw new Error(await res.text());
 
     const blob = await res.blob();
