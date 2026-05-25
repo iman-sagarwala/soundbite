@@ -242,10 +242,6 @@ select.fi option { background:#161616; }
 .tags-wrap { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:13px; }
 .tag { font-size:11px; font-weight:500; padding:4px 11px; border-radius:20px; border:1px solid var(--border); background:transparent; color:var(--text2); cursor:pointer; transition:all 0.13s; user-select:none; }
 .tag:hover,.tag.on { border-color:var(--border2); color:var(--text); background:var(--bg3); }
-<label style="display:flex;gap:9px;align-items:flex-start;font-size:12px;color:var(--text2);line-height:1.5;margin-bottom:13px;cursor:pointer">
-  <input type="checkbox" id="consent-box" style="margin-top:2px;flex-shrink:0">
-  <span>I confirm I own this voice or have the speaker's explicit permission. I will not clone public figures or anyone who has not consented.</span>
-</label>
 .form-foot { display:flex; align-items:center; justify-content:space-between; padding-top:13px; border-top:1px solid var(--border); }
 .hint { font-size:11px; color:var(--text3); }
 .btn-cancel { font-family:'DM Sans',sans-serif; font-size:13px; font-weight:500; padding:9px 18px; border-radius:8px; border:1px solid var(--border2); background:transparent; color:var(--text2); cursor:pointer; }
@@ -495,6 +491,10 @@ footer { position:relative; z-index:1; text-align:center; padding:3rem 1.5rem; b
         <span class="tag" onclick="this.classList.toggle('on')">conversational</span>
         <span class="tag" onclick="this.classList.toggle('on')">formal</span>
       </div>
+      <label style="display:flex;gap:9px;align-items:flex-start;font-size:12px;color:var(--text2);line-height:1.5;margin-bottom:13px;cursor:pointer">
+      <input type="checkbox" id="consent-box" style="margin-top:2px;flex-shrink:0">
+      <span>I confirm I own this voice or have the speaker's explicit permission. I will not clone public figures or anyone who has not consented.</span>
+      </label>
       <div class="form-foot">
         <span class="hint">more recordings = sharper clone</span>
         <div style="display:flex;gap:8px">
