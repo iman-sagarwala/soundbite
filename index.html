@@ -754,6 +754,36 @@ ttsPlayBtn.addEventListener('click', async () => {
   setGenProgress(0, 1);
   if (ttsAudio) { ttsAudio.pause(); ttsAudio = null; }
 
+  // queue + streaming playback: start playing chunk 1 while the rest generate
+  const queue = [];
+  let playingIdx = 0, done = 0, total = 0, allGenerated = false, started = false;
+
+  function startPlayback() {
+    if (started) return;
+    started = true;
+    ttsWave.style.display = 'flex';
+    ttsStatus.textContent = 'playing…';
+    playNext();
+  }
+  function playNext() {
+    if (playingIdx >= queue.length) {
+      if (allGenerated) {                 // truly finished
+        ttsWave.style.display = 'none';
+        ttsStatus.textContent = 'done · play again anytime';
+        ttsPlayBtn.disabled = false;
+        ttsPlayBtn.textContent = '▶ play';
+      } else {
+        setTimeout(playNext, 300);        // next chunk still generating — wait
+      }
+      return;
+    }
+    ttsAudio = new Audio(URL.createObjectURL(queue[playingIdx]));
+    ttsAudio.onended = () => { playingIdx++; playNext(); };
+    ttsAudio.play().catch(() => {
+      ttsStatus.textContent = 'tap play again to start audio';
+    });
+  }
+
   try {
     const cForm = new FormData();
     cForm.append('text', text);
@@ -763,41 +793,23 @@ ttsPlayBtn.addEventListener('click', async () => {
     });
     if (!cRes.ok) throw new Error(await cRes.text());
     const chunkList = (await cRes.json()).chunks;
-    const total = chunkList.length;
+    total = chunkList.length;
 
-    const blobs = [];
     for (let i = 0; i < total; i++) {
-      ttsStatus.textContent = 'synthesizing…';
       const blob = await synthChunk(chunkList[i], voiceId);
-      blobs.push(blob);
-      setGenProgress(i + 1, total);
+      queue.push(blob);
+      done++;
+      setGenProgress(done, total);
+      if (done === 1) { genWrap.style.display = 'none'; startPlayback(); }  // play ASAP
     }
-
-    genWrap.style.display = 'none';
-    ttsWave.style.display = 'flex';
-    ttsStatus.textContent = 'playing…';
-    let idx = 0;
-    function playNext() {
-      if (idx >= blobs.length) {
-        ttsWave.style.display = 'none';
-        ttsStatus.textContent = 'done · play again anytime';
-        ttsPlayBtn.disabled = false;
-        ttsPlayBtn.textContent = '▶ play';
-        return;
-      }
-      ttsAudio = new Audio(URL.createObjectURL(blobs[idx]));
-      ttsAudio.onended = () => { idx++; playNext(); };
-      ttsAudio.play();
-    }
-    playNext();
-    return;
+    allGenerated = true;
   } catch (e) {
     genWrap.style.display = 'none';
     ttsStatus.textContent = '✗ ' + e.message;
     console.error(e);
+    ttsPlayBtn.disabled = false;
+    ttsPlayBtn.textContent = '▶ play';
   }
-  ttsPlayBtn.disabled = false;
-  ttsPlayBtn.textContent = '▶ play';
 });
 </script>
 
