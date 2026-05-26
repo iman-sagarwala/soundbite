@@ -291,7 +291,8 @@ footer { position:relative; z-index:1; text-align:center; padding:3rem 1.5rem; b
       <button id="tts-play-btn" style="font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;padding:11px 28px;border-radius:8px;border:none;background:#fff;color:#000;cursor:pointer;transition:opacity 0.15s;">▶ play</button>
       <button id="tts-clear-btn" onclick="document.getElementById('tts-input').value='';document.getElementById('extract-status').textContent=''" style="font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;padding:10px 18px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:rgba(255,255,255,0.4);cursor:pointer;transition:all 0.15s;">clear</button>
     </div>
-<div id="gen-progress-wrap" style="display:none;margin-top:1rem;">
+
+    <div id="gen-progress-wrap" style="display:none;margin-top:1rem;">
       <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-bottom:6px;">
         <span id="gen-progress-label">generating…</span>
         <span id="gen-progress-pct">0%</span>
@@ -438,7 +439,7 @@ footer { position:relative; z-index:1; text-align:center; padding:3rem 1.5rem; b
 
 <script>
 // ===== CONFIG: paste your Colab tunnel URL here each session =====
-const API_BASE = "  https://shallot-grafting-backtrack.ngrok-free.dev";
+const API_BASE = "https://intervention-chargers-dependent-trucks.trycloudflare.com";
 
 // ===== SECTION DIVIDERS =====
 (function buildDividers(){
@@ -716,44 +717,85 @@ function getActiveVoiceId(){
   return v ? v.voiceId : null;
 }
 
+const genWrap  = document.getElementById('gen-progress-wrap');
+const genFill  = document.getElementById('gen-progress-fill');
+const genPct   = document.getElementById('gen-progress-pct');
+const genLabel = document.getElementById('gen-progress-label');
+
+function setGenProgress(done, total) {
+  const pct = Math.round((done / total) * 100);
+  genFill.style.width = pct + '%';
+  genPct.textContent = pct + '%';
+  genLabel.textContent = 'generating… (' + done + ' of ' + total + ')';
+}
+
+async function synthChunk(chunk, voiceId) {
+  const form = new FormData();
+  form.append('chunk', chunk);
+  form.append('voice_id', voiceId);
+  const res = await fetch(API_BASE + '/api/synthesize', {
+    method: 'POST', body: form,
+    headers: { 'ngrok-skip-browser-warning': '1' }
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.blob();
+}
+
 ttsPlayBtn.addEventListener('click', async () => {
   const text = ttsInput.value.trim();
   if (!text) { ttsStatus.textContent = 'type or drop a document first'; return; }
-
   const voiceId = getActiveVoiceId();
-  if (!voiceId) {
-    ttsStatus.textContent = 'no cloned voice yet — create one below and set it active';
-    return;
-  }
+  if (!voiceId) { ttsStatus.textContent = 'no cloned voice yet — create one and set it active'; return; }
 
   ttsPlayBtn.disabled = true;
   ttsPlayBtn.textContent = 'generating…';
-  ttsStatus.textContent = 'synthesizing in your voice…';
   ttsWave.style.display = 'none';
+  genWrap.style.display = 'block';
+  setGenProgress(0, 1);
   if (ttsAudio) { ttsAudio.pause(); ttsAudio = null; }
 
   try {
-    const form = new FormData();
-    form.append('text', text);
-    form.append('voice_id', voiceId);
+    const cForm = new FormData();
+    cForm.append('text', text);
+    const cRes = await fetch(API_BASE + '/api/chunks', {
+      method: 'POST', body: cForm,
+      headers: { 'ngrok-skip-browser-warning': '1' }
+    });
+    if (!cRes.ok) throw new Error(await cRes.text());
+    const chunkList = (await cRes.json()).chunks;
+    const total = chunkList.length;
 
-    const res = await fetch(API_BASE + '/api/synthesize', { method: 'POST', body: form, headers: { 'ngrok-skip-browser-warning': '1' } });
-    if (!res.ok) throw new Error(await res.text());
+    const blobs = [];
+    for (let i = 0; i < total; i++) {
+      ttsStatus.textContent = 'synthesizing…';
+      const blob = await synthChunk(chunkList[i], voiceId);
+      blobs.push(blob);
+      setGenProgress(i + 1, total);
+    }
 
-    const blob = await res.blob();
-    ttsAudio = new Audio(URL.createObjectURL(blob));
+    genWrap.style.display = 'none';
     ttsWave.style.display = 'flex';
     ttsStatus.textContent = 'playing…';
-    ttsAudio.play();
-    ttsAudio.onended = () => {
-      ttsWave.style.display = 'none';
-      ttsStatus.textContent = 'done · play again anytime';
-    };
+    let idx = 0;
+    function playNext() {
+      if (idx >= blobs.length) {
+        ttsWave.style.display = 'none';
+        ttsStatus.textContent = 'done · play again anytime';
+        ttsPlayBtn.disabled = false;
+        ttsPlayBtn.textContent = '▶ play';
+        return;
+      }
+      ttsAudio = new Audio(URL.createObjectURL(blobs[idx]));
+      ttsAudio.onended = () => { idx++; playNext(); };
+      ttsAudio.play();
+    }
+    playNext();
+    return;
   } catch (e) {
+    genWrap.style.display = 'none';
     ttsStatus.textContent = '✗ ' + e.message;
     console.error(e);
   }
-
   ttsPlayBtn.disabled = false;
   ttsPlayBtn.textContent = '▶ play';
 });
