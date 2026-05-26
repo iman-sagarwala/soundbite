@@ -291,7 +291,15 @@ footer { position:relative; z-index:1; text-align:center; padding:3rem 1.5rem; b
       <button id="tts-play-btn" style="font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;padding:11px 28px;border-radius:8px;border:none;background:#fff;color:#000;cursor:pointer;transition:opacity 0.15s;">▶ play</button>
       <button id="tts-clear-btn" onclick="document.getElementById('tts-input').value='';document.getElementById('extract-status').textContent=''" style="font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;padding:10px 18px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:rgba(255,255,255,0.4);cursor:pointer;transition:all 0.15s;">clear</button>
     </div>
-
+<div id="gen-progress-wrap" style="display:none;margin-top:1rem;">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-bottom:6px;">
+        <span id="gen-progress-label">generating…</span>
+        <span id="gen-progress-pct">0%</span>
+      </div>
+      <div style="height:4px;background:var(--border);border-radius:3px;overflow:hidden;">
+        <div id="gen-progress-fill" style="height:100%;width:0%;border-radius:3px;background:linear-gradient(90deg,#4d96ff,#c77dff,#ff6b6b);background-size:200% auto;animation:rainbow-flow 2s linear infinite;transition:width 0.3s ease;"></div>
+      </div>
+    </div>
     <div id="playback-wave" style="display:none;align-items:center;justify-content:center;gap:3px;height:50px;margin-top:1.5rem;"></div>
   </div>
 </section>
