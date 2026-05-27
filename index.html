@@ -895,16 +895,53 @@ async function extractDocx(file) {
 }
 
 async function extractImage(file) {
-  setExtractStatus('uploading image for OCR…');
-  const form = new FormData();
-  form.append('files', file, file.name);
-  const res = await fetch(API_BASE + '/api/ocr', {
-    method: 'POST', body: form,
-    headers: { 'ngrok-skip-browser-warning': '1' }
+  setExtractStatus('loading OCR engine…');
+  if (!window.Tesseract) {
+    await new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+      s.onload = res; s.onerror = rej;
+      document.head.appendChild(s);
+    });
+  }
+  setExtractStatus('preparing image…');
+
+  // preprocess: invert dark backgrounds, threshold to crisp black/white, upscale
+  const img = await new Promise((res, rej) => {
+    const im = new Image();
+    im.onload = () => res(im); im.onerror = rej;
+    im.src = URL.createObjectURL(file);
   });
-  if (!res.ok) throw new Error(await res.text());
-  const data = await res.json();
-  return data.text || '';
+  const scale = Math.max(1, 1600 / img.width);
+  const cv = document.createElement('canvas');
+  cv.width = img.width * scale; cv.height = img.height * scale;
+  const ctx = cv.getContext('2d');
+  ctx.drawImage(img, 0, 0, cv.width, cv.height);
+  const imgData = ctx.getImageData(0, 0, cv.width, cv.height);
+  const d = imgData.data;
+  let sum = 0;
+  for (let i = 0; i < d.length; i += 4) sum += (d[i] + d[i+1] + d[i+2]) / 3;
+  const avg = sum / (d.length / 4);
+  const darkBg = avg < 128;
+  for (let i = 0; i < d.length; i += 4) {
+    let g = (d[i] + d[i+1] + d[i+2]) / 3;
+    if (darkBg) g = 255 - g;
+    g = g < 140 ? 0 : 255;
+    d[i] = d[i+1] = d[i+2] = g;
+  }
+  ctx.putImageData(imgData, 0, 0);
+
+  setExtractStatus('running OCR on image — this takes a moment…');
+  const result = await Tesseract.recognize(cv, 'eng', {
+    logger: m => {
+      if (m.status === 'recognizing text') {
+        setExtractStatus('OCR: ' + Math.round(m.progress * 100) + '% complete…');
+      }
+    },
+    tessedit_pageseg_mode: '1',
+    preserve_interword_spaces: '1',
+  });
+  return result.data.text;
 }
 </script>
 </body>
