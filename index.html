@@ -232,6 +232,12 @@ footer { position:relative; z-index:1; text-align:center; padding:3rem 1.5rem; b
 .footer-sub { font-size:12px; color:var(--text3); }
 #tts-demo { padding: 5rem 1.5rem; max-width: 800px; margin: 0 auto; }
 .tts-inner { max-width: 640px; margin: 0 auto; }
+
+
+
+
+#adlib-toggle:hover { color: var(--text2); border-color: var(--border2); }
+#adlib-toggle:has(input:checked) { color: var(--text); border-color: rgba(199,125,255,0.4); background: rgba(199,125,255,0.06); }
 </style>
 </head>
 <body>
@@ -242,6 +248,8 @@ footer { position:relative; z-index:1; text-align:center; padding:3rem 1.5rem; b
   <div class="orb orb4"></div>
   <div class="orb orb5"></div>
 </div>
+
+
 <input type="file" id="file-input" accept=".mp3,.wav,.m4a,audio/*" multiple style="display:none">
 <input type="file" id="voice-add-input" accept=".mp3,.wav,.m4a,audio/*" multiple style="display:none">
 
@@ -289,6 +297,10 @@ footer { position:relative; z-index:1; text-align:center; padding:3rem 1.5rem; b
 
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
       <button id="tts-play-btn" style="font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;padding:11px 28px;border-radius:8px;border:none;background:#fff;color:#000;cursor:pointer;transition:opacity 0.15s;">▶ play</button>
+      <label id="adlib-toggle" style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--text3);cursor:pointer;user-select:none;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:transparent;transition:all 0.13s;margin-left:auto;" title="Rewrite text in the speaker's conversational style before reading">
+        <input type="checkbox" id="adlib-checkbox" style="margin:0;cursor:pointer;">
+        <span>✨ adlib personality</span>
+      </label>
       <button id="tts-clear-btn" onclick="document.getElementById('tts-input').value='';document.getElementById('extract-status').textContent=''" style="font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;padding:10px 18px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:rgba(255,255,255,0.4);cursor:pointer;transition:all 0.15s;">clear</button>
     </div>
 
@@ -440,6 +452,7 @@ footer { position:relative; z-index:1; text-align:center; padding:3rem 1.5rem; b
 <script>
 // ===== CONFIG: paste your Colab tunnel URL here each session =====
 const API_BASE = "https://shallot-grafting-backtrack.ngrok-free.dev";
+
 
 // ===== SECTION DIVIDERS =====
 (function buildDividers(){
@@ -785,8 +798,30 @@ ttsPlayBtn.addEventListener('click', async () => {
   }
 
   try {
+    // ── if adlib personality is on, rewrite the text via Claude first ──
+    let inputText = text;
+    const adlibOn = document.getElementById('adlib-checkbox')?.checked;
+    if (adlibOn) {
+      try {
+        ttsStatus.textContent = 'rewriting in voice personality…';
+        const rForm = new FormData();
+        rForm.append('text', text);
+        rForm.append('voice_id', voiceId);
+        const rRes = await fetch(API_BASE + '/api/rewrite', {
+          method: 'POST', body: rForm,
+          headers: { 'ngrok-skip-browser-warning': '1' }
+        });
+        if (!rRes.ok) throw new Error('rewrite failed: ' + (await rRes.text()));
+        inputText = (await rRes.json()).text || text;
+      } catch (e) {
+        ttsStatus.textContent = '✗ adlib failed, reading original — ' + e.message;
+        console.error(e);
+        inputText = text;
+      }
+    }
+
     const cForm = new FormData();
-    cForm.append('text', text);
+    cForm.append('text', inputText);
     const cRes = await fetch(API_BASE + '/api/chunks', {
       method: 'POST', body: cForm,
       headers: { 'ngrok-skip-browser-warning': '1' }
@@ -895,53 +930,16 @@ async function extractDocx(file) {
 }
 
 async function extractImage(file) {
-  setExtractStatus('loading OCR engine…');
-  if (!window.Tesseract) {
-    await new Promise((res, rej) => {
-      const s = document.createElement('script');
-      s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
-      s.onload = res; s.onerror = rej;
-      document.head.appendChild(s);
-    });
-  }
-  setExtractStatus('preparing image…');
-
-  // preprocess: invert dark backgrounds, threshold to crisp black/white, upscale
-  const img = await new Promise((res, rej) => {
-    const im = new Image();
-    im.onload = () => res(im); im.onerror = rej;
-    im.src = URL.createObjectURL(file);
+  setExtractStatus('uploading image for OCR…');
+  const form = new FormData();
+  form.append('files', file, file.name);
+  const res = await fetch(API_BASE + '/api/ocr', {
+    method: 'POST', body: form,
+    headers: { 'ngrok-skip-browser-warning': '1' }
   });
-  const scale = Math.max(1, 1600 / img.width);
-  const cv = document.createElement('canvas');
-  cv.width = img.width * scale; cv.height = img.height * scale;
-  const ctx = cv.getContext('2d');
-  ctx.drawImage(img, 0, 0, cv.width, cv.height);
-  const imgData = ctx.getImageData(0, 0, cv.width, cv.height);
-  const d = imgData.data;
-  let sum = 0;
-  for (let i = 0; i < d.length; i += 4) sum += (d[i] + d[i+1] + d[i+2]) / 3;
-  const avg = sum / (d.length / 4);
-  const darkBg = avg < 128;
-  for (let i = 0; i < d.length; i += 4) {
-    let g = (d[i] + d[i+1] + d[i+2]) / 3;
-    if (darkBg) g = 255 - g;
-    g = g < 140 ? 0 : 255;
-    d[i] = d[i+1] = d[i+2] = g;
-  }
-  ctx.putImageData(imgData, 0, 0);
-
-  setExtractStatus('running OCR on image — this takes a moment…');
-  const result = await Tesseract.recognize(cv, 'eng', {
-    logger: m => {
-      if (m.status === 'recognizing text') {
-        setExtractStatus('OCR: ' + Math.round(m.progress * 100) + '% complete…');
-      }
-    },
-    tessedit_pageseg_mode: '1',
-    preserve_interword_spaces: '1',
-  });
-  return result.data.text;
+  if (!res.ok) throw new Error(await res.text());
+  const data = await res.json();
+  return data.text || '';
 }
 </script>
 </body>
