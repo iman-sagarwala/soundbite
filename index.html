@@ -238,6 +238,12 @@ footer { position:relative; z-index:1; text-align:center; padding:3rem 1.5rem; b
 
 #adlib-toggle:hover { color: var(--text2); border-color: var(--border2); }
 #adlib-toggle:has(input:checked) { color: var(--text); border-color: rgba(199,125,255,0.4); background: rgba(199,125,255,0.06); }
+
+.intent-input { font-family:'DM Sans',sans-serif; font-size:11px; width:100%;
+  background:transparent; border:none; border-top:1px solid var(--border);
+  padding:7px 0 2px; color:var(--text2); margin-top:7px; resize:none; min-height:24px; line-height:1.4; }
+.intent-input:focus { outline:none; color:var(--text); }
+.intent-input::placeholder { color:var(--text3); font-style:italic; }
 </style>
 </head>
 <body>
@@ -400,7 +406,7 @@ footer { position:relative; z-index:1; text-align:center; padding:3rem 1.5rem; b
       </div>
       <div class="fg">
         <label class="fl">personality prompt <span style="text-transform:none;letter-spacing:0;font-weight:400;font-size:11px;color:var(--text3)">— optional</span></label>
-        <textarea class="fi" id="personality-prompt" placeholder="e.g. enthusiastic history teacher, builds suspense before key points..."></textarea>
+        <textarea class="fi" id="personality-prompt" placeholder="describe how this voice should talk — e.g. 'enthusiastic teacher, builds suspense, uses analogies and casual asides'. used when 'adlib personality' is on."></textarea>
       </div>
       <div class="tags-wrap" id="tags-wrap">
         <span class="tag" onclick="this.classList.toggle('on')">enthusiastic</span>
@@ -521,10 +527,28 @@ function renderStagingFile(obj){
   const list=document.getElementById('file-list');
   const el=document.createElement('div');
   el.className='file-item'; el.id='fi-'+obj.id;
+  el.style.flexDirection = 'column';
+  el.style.alignItems = 'stretch';
   const color=RCOLORS[state.stagingFiles.length%RCOLORS.length];
-  el.innerHTML='<span class="file-icon">♪</span><div class="file-info"><div class="file-name">'+esc(obj.name)+'</div><div class="prog-bar"><div class="prog-fill" id="prog-'+obj.id+'" style="width:0%;background:'+color+'"></div></div><div class="file-status" id="st-'+obj.id+'">uploading…</div></div><span class="file-size">'+fmtSize(obj.size)+'</span><button class="file-remove" onclick="removeStagingFile(\''+obj.id+'\')">✕</button>';
+  el.innerHTML =
+    '<div style="display:flex;align-items:center;gap:11px;width:100%">'
+    + '<span class="file-icon">♪</span>'
+    + '<div class="file-info"><div class="file-name">'+esc(obj.name)+'</div>'
+      + '<div class="prog-bar"><div class="prog-fill" id="prog-'+obj.id+'" style="width:0%;background:'+color+'"></div></div>'
+      + '<div class="file-status" id="st-'+obj.id+'">uploading…</div></div>'
+    + '<span class="file-size">'+fmtSize(obj.size)+'</span>'
+    + '<button class="file-remove" onclick="removeStagingFile(\''+obj.id+'\')">✕</button>'
+    + '</div>'
+    + '<textarea class="intent-input" id="intent-'+obj.id+'" '
+      + 'placeholder="optional: what was this recording supposed to be about? (helps capture personality)" '
+      + 'oninput="updateIntent(\''+obj.id+'\', this.value)"></textarea>';
   list.appendChild(el);
   animProg(obj.id);
+}
+
+function updateIntent(id, val) {
+  const f = state.stagingFiles.find(x => x.id === id);
+  if (f) f.intent = val;
 }
 
 function removeStagingFile(id){
@@ -578,6 +602,9 @@ async function createVoice(){
   const form = new FormData();
   form.append('name', name);
   form.append('consent', 'true');
+  // intents: one per recording in the same order as files (empty string if not filled)
+  const intents = state.stagingFiles.map(f => f.intent || '');
+  form.append('intents', JSON.stringify(intents));
   state.stagingFiles.forEach(f => form.append('files', f.file, f.name));
 
   let voiceId = null;
