@@ -117,13 +117,6 @@ section { position: relative; z-index: 1; }
 .ic-num { font-size: 11px; font-weight: 700; letter-spacing: 1px; color: var(--text3); margin-bottom: 10px; }
 .ic-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 6px; letter-spacing: -0.3px; }
 .ic-body { font-size: 13px; color: var(--text2); line-height: 1.6; }
-.impact-quote {
-  border-left: 2px solid rgba(255,255,255,0.1);
-  padding-left: 1.5rem;
-  margin-top: 2rem;
-}
-.iq-text { font-size: 18px; font-style: italic; color: var(--text2); line-height: 1.7; margin-bottom: 8px; font-weight: 300; }
-.iq-attr { font-size: 12px; color: var(--text3); }
 #app { padding: 4rem 1.5rem 6rem; max-width: 640px; margin: 0 auto; }
 .sh { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; margin-top: 2.5rem; }
 .st { font-size: 10px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text3); }
@@ -225,7 +218,7 @@ select.fi option { background:#161616; }
 .plus-circle { width:26px; height:26px; border-radius:50%; border:1px solid var(--border2); display:flex; align-items:center; justify-content:center; font-size:15px; color:var(--text2); }
 .new-vsi-label { font-size:13px; font-weight:500; color:var(--text2); }
 .modal-foot { display:flex; gap:8px; justify-content:flex-end; }
-.toast { position:fixed; bottom:2rem; left:50%; transform:translateX(-50%) translateY(20px); background:var(--bg2); border:1px solid var(--border2); border-radius:10px; padding:10px 18px; font-size:13px; color:var(--text); z-index:300; opacity:0; transition:all 0.25s; pointer-events:none; white-space:nowrap; }
+.toast { position:fixed; bottom:2rem; left:50%; transform:translateX(-50%) translateY(20px); background:var(--bg2); border:1px solid var(--border2); border-radius:10px; padding:10px 18px; font-size:13px; color:var(--text); z-index:300; opacity:0; transition:all 0.25s; pointer-events:none; max-width:min(90vw,560px); text-align:center; line-height:1.5; }
 .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
 footer { position:relative; z-index:1; text-align:center; padding:3rem 1.5rem; border-top:1px solid var(--border); }
 .footer-logo { font-size:15px; font-weight:700; margin-bottom:8px; }
@@ -262,20 +255,20 @@ footer { position:relative; z-index:1; text-align:center; padding:3rem 1.5rem; b
 <nav>
   <div class="logo"><span class="logo-rainbow">soundbite</span></div>
   <div class="nav-links">
-    <a class="nav-link" href="#impact">about</a>
+    <a class="nav-link" href="#impact">how it works</a>
     <a class="nav-link" href="#app">app</a>
   </div>
   <button class="btn-nav">get extension</button>
 </nav>
 
 <section id="hero">
-  <div class="hero-eyebrow"><div class="pulse-dot"></div>accessibility · voice · ai</div>
+  <div class="hero-eyebrow"><div class="pulse-dot"></div>voice cloning · text to speech</div>
   <h1>read anything.<br>in <span class="rainbow-word">any voice.</span></h1>
   <p class="hero-sub">Clone a voice from recordings. Soundbite reads your documents, PDFs, and web pages in that voice.</p>
   <div class="soundwave-wrap" id="sw-hero"></div>
   <div class="cta-row">
     <button class="btn-white" onclick="document.getElementById('app').scrollIntoView({behavior:'smooth'})">try it now</button>
-    <button class="btn-ghost" onclick="document.getElementById('impact').scrollIntoView({behavior:'smooth'})">why we built this →</button>
+    <button class="btn-ghost" onclick="document.getElementById('impact').scrollIntoView({behavior:'smooth'})">how it works →</button>
   </div>
   <div class="scroll-hint"><span class="scroll-arrow">↓</span> scroll to learn more</div>
 </section>
@@ -299,7 +292,7 @@ footer { position:relative; z-index:1; text-align:center; padding:3rem 1.5rem; b
 
     <div id="extract-status" style="font-size:11px;color:rgba(255,255,255,0.3);margin-bottom:10px;min-height:16px;display:flex;align-items:center;gap:6px;"></div>
 
-    <textarea id="tts-input" style="width:100%;font-family:'DM Sans',sans-serif;font-size:14px;background:var(--bg1);border:1px solid var(--border2);border-radius:10px;padding:12px 14px;color:var(--text);resize:vertical;min-height:100px;line-height:1.7;margin-bottom:12px;" placeholder="extracted text appears here — or type anything…">Reading shouldn't be a barrier. Soundbite lets you hear any document in a voice that actually feels familiar.</textarea>
+    <textarea id="tts-input" style="width:100%;font-family:'DM Sans',sans-serif;font-size:14px;background:var(--bg1);border:1px solid var(--border2);border-radius:10px;padding:12px 14px;color:var(--text);resize:vertical;min-height:100px;line-height:1.7;margin-bottom:12px;" placeholder="extracted text appears here — or type anything…">Drop in a PDF, a photo of a page, or paste text — Soundbite reads it back in the voice you cloned.</textarea>
 
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
       <button id="tts-play-btn" style="font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;padding:11px 28px;border-radius:8px;border:none;background:#fff;color:#000;cursor:pointer;transition:opacity 0.15s;">▶ play</button>
@@ -326,32 +319,28 @@ footer { position:relative; z-index:1; text-align:center; padding:3rem 1.5rem; b
 <div class="section-divider" id="div-1b"></div>
 
 <section id="impact">
-  <div class="impact-tag">the problem</div>
-  <h2 class="impact-headline">reading shouldn't feel like<br><em>a wall you can't climb.</em></h2>
+  <div class="impact-tag">how it works</div>
+  <h2 class="impact-headline">any text. any voice.<br><em>in seconds.</em></h2>
   <p class="impact-body">
-    Millions of people — students with dyslexia, people with ADHD, visual impairments, or just anyone who processes information better through sound — are handed text-heavy documents and told to figure it out. Existing text-to-speech tools help, but they all sound the same: robotic, cold, impersonal.<br><br>
-    <strong>Engagement matters.</strong> A student is far more likely to absorb a history lecture if it sounds like a teacher they trust than if it sounds like a synthesizer.
+    Upload a few recordings of a voice, and Soundbite builds a clone of it. Then point it at anything — a PDF, a scanned page, a Word doc, a web page — and it reads the whole thing back in that voice.<br><br>
+    <strong>Voices sound like people, not synthesizers.</strong> Cadence, rhythm, and delivery come from the recordings, so what you hear is closer to someone reading to you than a machine announcing at you.
   </p>
   <div class="impact-cards">
     <div class="impact-card" style="--accent:linear-gradient(90deg,#ff6b6b,#ffd93d)">
       <div class="ic-num">01</div>
       <div class="ic-title">voice that feels human</div>
-      <div class="ic-body">Clone any real voice from recordings. Not a preset — the actual cadence, rhythm, and character of a person you trust.</div>
+      <div class="ic-body">Clone any real voice from recordings. Not a preset — the actual cadence, rhythm, and character of a specific person.</div>
     </div>
     <div class="impact-card" style="--accent:linear-gradient(90deg,#4d96ff,#6bcb77)">
       <div class="ic-num">02</div>
       <div class="ic-title">personality, not just sound</div>
-      <div class="ic-body">The voice doesn't just sound like them — it reads like them too.</div>
+      <div class="ic-body">Turn on adlib and the text gets rewritten in their speaking style first — so the voice doesn't just sound like them, it reads like them.</div>
     </div>
     <div class="impact-card" style="--accent:linear-gradient(90deg,#c77dff,#ff6b6b)">
       <div class="ic-num">03</div>
       <div class="ic-title">any document, anywhere</div>
-      <div class="ic-body">PDFs, images, web pages — upload and your voice reads it aloud in seconds.</div>
+      <div class="ic-body">PDFs, Word docs, photos of pages, web pages — upload it and your voice reads it aloud in seconds.</div>
     </div>
-  </div>
-  <div class="impact-quote">
-    <div class="iq-text">"I just want to be able to learn the same way everyone else does."</div>
-    <div class="iq-attr">— the friend this was built for</div>
   </div>
 </section>
 
@@ -432,9 +421,11 @@ footer { position:relative; z-index:1; text-align:center; padding:3rem 1.5rem; b
   </div>
 </section>
 
+<div class="section-divider" id="div-5"></div>
+
 <footer>
   <div class="footer-logo"><span class="logo-rainbow">soundbite</span></div>
-  <div class="footer-sub">built for anyone who deserves to hear the world differently</div>
+  <div class="footer-sub">clone a voice · read anything aloud</div>
 </footer>
 
 <div id="modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)this.style.display='none'">
@@ -461,12 +452,13 @@ const API_BASE = "https://shallot-grafting-backtrack.ngrok-free.dev";
 
 
 // ===== SECTION DIVIDERS =====
-(function buildDividers(){
-  const IDS = ['div-1','div-1b','div-2','div-3','div-4'];
+function buildDividers(){
+  const IDS = ['div-1','div-1b','div-2','div-3','div-4','div-5'];
   const COLORS = ['#ff6b6b','#ff9a3c','#ffd93d','#6bcb77','#4d96ff','#9b5de5','#c77dff','#ff6ec7'];
   IDS.forEach((id, di) => {
     const wrap = document.getElementById(id);
     if (!wrap) return;
+    wrap.innerHTML = '';                       // rebuild on resize
     const barW = 3, gap = 4;
     const N = Math.ceil(window.innerWidth / (barW + gap)) + 2;
     for (let i = 0; i < N; i++) {
@@ -480,7 +472,13 @@ const API_BASE = "https://shallot-grafting-backtrack.ngrok-free.dev";
       wrap.appendChild(bar);
     }
   });
-})();
+}
+buildDividers();
+let _dividerTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(_dividerTimer);
+  _dividerTimer = setTimeout(buildDividers, 200);   // refill after a viewport change
+});
 
 // ===== HERO SOUNDWAVE =====
 (function buildSwBars(){
@@ -605,15 +603,28 @@ async function createVoice(){
   // intents: one per recording in the same order as files (empty string if not filled)
   const intents = state.stagingFiles.map(f => f.intent || '');
   form.append('intents', JSON.stringify(intents));
+  // personality: the backend feeds these to /api/rewrite for the adlib toggle
+  form.append('prompt', prompt);
+  form.append('tags', JSON.stringify(tags));
+  form.append('source', source);
   state.stagingFiles.forEach(f => form.append('files', f.file, f.name));
 
   let voiceId = null;
   try {
     const res = await fetch(API_BASE + '/api/clone', { method: 'POST', body: form, headers: { 'ngrok-skip-browser-warning': '1' } });
-    if(!res.ok) throw new Error(await res.text());
+    if(!res.ok) throw new Error('HTTP ' + res.status + ' — ' + (await res.text()).slice(0, 300));
     voiceId = (await res.json()).voice_id;
   } catch(e) {
-    showToast('✗ clone failed'); console.error(e); return;
+    console.error('clone failed:', e);
+    // A thrown TypeError means the request never reached a server at all:
+    // tunnel down, wrong API_BASE, or the browser blocked it.
+    const reachable = await pingBackend();
+    if (!reachable) {
+      showToast('✗ backend unreachable — is the Colab cell still running?');
+    } else {
+      showToast('✗ ' + e.message);
+    }
+    return;
   }
 
   const recs = state.stagingFiles.slice();
@@ -732,7 +743,19 @@ function animProg(id){
   let p=0;const bar=document.getElementById('prog-'+id);const st=document.getElementById('st-'+id);
   const iv=setInterval(()=>{p=Math.min(p+Math.random()*18+4,100);if(bar)bar.style.width=p+'%';if(p>=100){clearInterval(iv);if(st){st.textContent='ready';st.className='file-status done';}}},120);
 }
-function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600);}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),msg.length>60?7000:2600);}
+
+// Distinguishes "the server said no" from "there is no server". /health is the
+// cheapest route on the backend and loads no models.
+async function pingBackend(){
+  try {
+    const r = await fetch(API_BASE + '/health', { headers: { 'ngrok-skip-browser-warning': '1' } });
+    if (!r.ok) return false;
+    const h = await r.json();
+    console.log('backend health:', h);
+    return true;
+  } catch(e) { return false; }
+}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
 // ===== TTS via Colab backend =====
